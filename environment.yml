@@ -1,0 +1,14 @@
+# conda env with everything for the prepare + xtb stages
+#   conda env create -f environment.yml && conda activate tfa-eads && pip install -e .
+name: tfa-eads
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - rdkit
+  - numpy
+  - pandas
+  - pyyaml
+  - xtb
+  - pytest
+  - pip

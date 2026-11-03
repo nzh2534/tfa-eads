@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tfa-eads"
+version = "0.1.0"
+description = "SMILES -> conformers -> docked complexes -> xTB / DFT adsorption energies for trifluoroacetate"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "rdkit>=2023.9",
+    "numpy",
+    "pandas",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dimorphite = ["dimorphite_dl"]
+dev = ["pytest"]
+
+[project.scripts]
+tfa-eads = "tfa_eads.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["xtb: needs the xtb binary on PATH (skipped otherwise)"]

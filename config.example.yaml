@@ -1,0 +1,75 @@
+# tfa_eads configuration. Anything omitted falls back to tfa_eads/config.py defaults.
+
+input_csv: data/seed_set_raw.csv   # data/ is git-ignored
+id_column: cid
+smiles_column: smiles
+charge_column: charge            # only used as a consistency check
+override_column: smiles_override # optional column; filled rows are used verbatim
+workdir: work
+
+# How to set charges for water at pH 7:
+#   rules      conservative built-in rules (strong acids, carboxylic acids,
+#              sulfonylureas, aliphatic amines, guanidines, amidines)
+#   dimorphite Dimorphite-DL; broader, but over-deprotonates hydrazides/imides
+#   as_given   use the SMILES exactly as written
+protonation: rules
+ph: 7.0
+
+guest:
+  name: TFA
+  smiles: "[O-]C(=O)C(F)(F)F"     # trifluoroacetate: TFA is fully deprotonated in water
+
+competitors:                      # each adds one docking + DFT set per host
+  - {name: chloride, smiles: "[Cl-]"}
+  # - {name: nitrate, smiles: "[O-][N+](=O)[O-]"}
+  # - {name: bicarbonate, smiles: "OC(=O)[O-]"}
+
+conformers:
+  n_to_xtb: 10                    # force-field conformers re-optimized with xTB
+  n_keep: 3                       # distinct xTB conformers kept per host
+
+docking:
+  host_conformers: 1              # dock into the lowest N host conformers
+  max_poses: 24                   # starting poses per anion per host conformer
+  n_keep: 3                       # best valid poses passed on to DFT
+
+xtb:
+  executable: xtb                 # or a full path
+  threads_per_job: 1
+  parallel_jobs: 8                # concurrent xtb processes; ~number of cores
+
+dft:
+  engine: orca                    # orca | qe   (Quantum ESPRESSO settings below)
+  nprocs: 8
+  maxcore_mb: 3000                # memory per core (used for the SLURM request)
+  # --- ORCA ---
+  opt_keywords: "r2SCAN-3c CPCM(water) TightSCF"
+  sp_keywords: "wB97M-V def2-TZVPD TightSCF CPCM(water)"
+  sp_smd: true                    # SMD water for the single point
+  freq: false                     # true -> free energies (Gads); ~3-10x cost
+  n_host_conformers: 3
+  n_poses: 3
+  # --- Quantum ESPRESSO (engine: qe) ---
+  qe:
+    pw_executable: pw.x
+    launcher: "mpirun -np {nprocs}"   # "srun" on most SLURM clusters
+    pseudo_dir: ~/pseudo/SSSP          # SSSP efficiency recommended
+    pseudopotentials: {}               # e.g. {Cl: Cl.pbe-n-rrkjus_psl.1.0.0.UPF}; else auto-detected
+    ecutwfc: 50                        # Ry; use the max SSSP cutoff over H C N O F S Cl Br I P
+    ecutrho: 400                       # Ry
+    input_dft: null                    # null = PBE from the pseudopotentials
+    vdw_corr: dft-d3
+    dftd3_version: 4                   # D3(BJ)
+    dftd3_threebody: false
+    solvation: environ                 # environ (pw.x built with Environ) | none (testing only)
+    environ_type: water
+    vacuum: 8.0                        # Angstrom each side; check convergence
+  slurm:
+    time: "24:00:00"
+    partition: null
+    account: null
+    max_concurrent: 50            # at most this many array tasks running at once
+
+limits:
+  warn_heavy_atoms: 100
+  skip_heavy_atoms: null          # e.g. 120 to drop the cyclodextrins from DFT runs
